@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from timer import time_me
 
 
-N_REPEATS = 10
+N_REPEATS = 1
 
 
 @time_me(N_REPEATS)
@@ -22,8 +22,24 @@ def simple(data: List[float], period: int):
 
 
 @time_me(N_REPEATS)
-def rotating_sample(data: List[float], period: int):
+def push_pop(data: List[float], period: int):
     '''Not slicing the original array each time - update with each subsequent value'''
+    sample = list(data[:period])
+    
+    results = []
+    for i in range(period, len(data)):
+        mean = sum(sample) / period
+        results.append(mean)
+
+        del sample[0]
+        sample.append(data[i])
+
+    return results
+
+
+@time_me(N_REPEATS)
+def rotating_sample(data: List[float], period: int):
+    '''Same as push and pop but updating a single array'''
     sample = data[:period]
     idx_sample = -1
     
@@ -71,6 +87,15 @@ class TestCases(unittest.TestCase):
         self.assertListEqual(simple(data, 3)[0], self.results_20_3)
         self.assertListEqual(simple(data, 5)[0], self.results_20_5)
 
+    def test_push_pop(self):
+        data = range(10)
+        self.assertListEqual(push_pop(data, 3)[0], self.results_10_3)
+        self.assertListEqual(push_pop(data, 5)[0], self.results_10_5)
+
+        data = range(20)
+        self.assertListEqual(push_pop(data, 3)[0], self.results_20_3)
+        self.assertListEqual(push_pop(data, 5)[0], self.results_20_5)
+
     def test_rotating_sample(self):
         data = range(10)
         self.assertListEqual(rotating_sample(list(data), 3)[0], self.results_10_3)
@@ -93,14 +118,14 @@ class TestCases(unittest.TestCase):
         data = [i for i in range(200_000)]
 
         results = []
-        for func in (simple, rotating_sample, updates):
+        for func in (simple, push_pop, rotating_sample, updates):
             for period in range(20, 201, 20):
                 _, time_taken = func(data, period)
                 results.append((func.__name__, period, time_taken))
         
         # plot results - altogether
         plt.figure()
-        for key in ('simple', 'rotating_sample', 'updates'):
+        for key in ('simple', 'push_pop', 'rotating_sample', 'updates'):
             x = [x[1] for x in results if x[0] == key]
             y = [x[2] for x in results if x[0] == key]
             plt.plot(x, y, label=key)
@@ -116,7 +141,7 @@ class TestCases(unittest.TestCase):
         plt.close('all')
 
         # plot results - individually
-        for key in ('updates', 'rotating_sample', 'simple'):
+        for key in ('simple', 'push_pop', 'rotating_sample', 'updates'):
             plt.figure()
             x = [x[1] for x in results if x[0] == key]
             y = [x[2] for x in results if x[0] == key]
